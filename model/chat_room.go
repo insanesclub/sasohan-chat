@@ -6,7 +6,7 @@ type ChatRoom struct {
 	Users []*User // participants
 }
 
-// NewChatRoom
+// NewChatRoom returns a new chat room.
 func NewChatRoom(id string) *ChatRoom {
 	return &ChatRoom{
 		ID:    id,

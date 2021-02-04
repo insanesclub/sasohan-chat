@@ -29,6 +29,8 @@ func NewUser(id string, conn *websocket.Conn) *User {
 func (u *User) Run(rooms map[string]*ChatRoom) {
 	go u.receive(rooms)
 
+	defer u.exit()
+
 	// catch message and send
 	// if user logout, then quit and close connection.
 	for {
@@ -36,14 +38,13 @@ func (u *User) Run(rooms map[string]*ChatRoom) {
 		case msg := <-u.read:
 			u.send(msg)
 		case <-u.quit:
-			u.conn.Close()
 			return
 		}
 	}
 }
 
-// receive listens message from socket.
-// when message comes, broadcasts it to users in the chat room.
+// receive listens message from client.
+// when message comes, broadcasts it to each users in the chat room.
 func (u *User) receive(rooms map[string]*ChatRoom) error {
 	msg := new(Message)
 	for {
@@ -51,12 +52,12 @@ func (u *User) receive(rooms map[string]*ChatRoom) error {
 		if err := websocket.Message.Receive(u.conn, msg); err != nil {
 			return err
 		}
-		u.broadCast(rooms[msg.ChatRoomID], msg)
+		u.broadcast(rooms[msg.ChatRoomID], msg)
 	}
 }
 
-// broadcast delivers msg to each users in room.
-func (u *User) broadCast(room *ChatRoom, msg *Message) {
+// broadcast broadcasts msg to each users in room.
+func (u *User) broadcast(room *ChatRoom, msg *Message) {
 	for _, user := range room.Users {
 		user.read <- *msg
 	}
@@ -79,6 +80,7 @@ func (u *User) send(msg Message) error {
 	return nil
 }
 
-// exit occurs when user logout.
-// alert user to quit and close connection.
-func (u *User) exit() { u.quit <- struct{}{} }
+// exit removes user from chat rooms and close its connection, channels.
+func (u *User) exit() {
+	// TODO
+}
