@@ -1,13 +1,9 @@
 package model
 
-// Message represents a message from user.
+// Message represents a message.
 type Message struct {
-	// who sent this message
-	UserID string `json:"user_id"`
-	// where to send this message
-	ChatRoomID string `json:"chat_room_id"`
-	// when this message sent, unix time
-	Time uint64 `json:"time"`
-	// text content
-	Content string `json:"content"`
+	UserID     string `json:"user_id"`      // who sent this message
+	ChatRoomID string `json:"chat_room_id"` // where to send this message
+	Time       int64  `json:"time"`         // when this message sent, unix time
+	Text       string `json:"text"`         // text content
 }
