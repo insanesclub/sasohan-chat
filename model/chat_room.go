@@ -2,14 +2,14 @@ package model
 
 // ChatRoom represents a chat room.
 type ChatRoom struct {
-	ID    string  // identifier
-	Users []*User // participants
+	ID    string             // identifier
+	Users map[*User]struct{} // user set
 }
 
 // NewChatRoom returns a new chat room.
 func NewChatRoom(id string) *ChatRoom {
 	return &ChatRoom{
 		ID:    id,
-		Users: make([]*User, 2), // there's always at least 2 users in a chat room
+		Users: make(map[*User]struct{}),
 	}
 }

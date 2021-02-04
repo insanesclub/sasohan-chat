@@ -1,28 +1,33 @@
 package middleware
 
 import (
+	"sync"
+
 	"github.com/insanesclub/sasohan-chat/model"
-	"github.com/labstack/echo/v4"
 	"golang.org/x/net/websocket"
 )
 
-// HandleConnection handles /enter.
-// connection creates a new user,
-// and users send messages each other.
-func HandleConnection(rooms map[string]*model.ChatRoom) func(echo.Context) error {
-	return func(c echo.Context) error {
-		// parse user ID from request body
+// ConnectionHandlerGenerator generates connection handler.
+func ConnectionHandlerGenerator(rooms *sync.Map) websocket.Handler {
+	return func(c *websocket.Conn) {
+		// get user ID
 		body := new(struct {
 			ID string `json:"id"`
 		})
-		if err := c.Bind(body); err != nil {
-			return err
+
+		// get payload from socket
+		// payload is in-memory buffer
+		// and max size of the buffer is set by Conn.MaxPayloadBytes
+		// default max size is 32MB
+		// see https://pkg.go.dev/golang.org/x/net/websocket
+		//
+		// if payload size exceeds limit, ErrFrameTooLarge is returned
+		if err := websocket.JSON.Receive(c, body); err != nil {
+			panic(err)
 		}
 
-		websocket.Handler(func(conn *websocket.Conn) {
-			user := model.NewUser(body.ID, conn)
-			go user.Run(rooms)
-		}).ServeHTTP(c.Response(), c.Request())
-		return nil
+		// create user with connection
+		user := model.NewUser(body.ID, c)
+		go user.Run(rooms)
 	}
 }

@@ -1,8 +1,7 @@
 package model
 
 import (
-	"encoding/json"
-	"errors"
+	"sync"
 
 	"golang.org/x/net/websocket"
 )
@@ -11,28 +10,28 @@ import (
 type User struct {
 	id   string // identifier
 	conn *websocket.Conn
-	read chan Message
+	read chan *Message
 	quit chan struct{}
 }
 
-// NewUser returns a new user with connection c.
+// NewUser returns a new user.
 func NewUser(id string, conn *websocket.Conn) *User {
 	return &User{
 		id:   id,
 		conn: conn,
-		read: make(chan Message),
+		read: make(chan *Message),
 		quit: make(chan struct{}),
 	}
 }
 
 // Run starts user activation.
-func (u *User) Run(rooms map[string]*ChatRoom) {
-	go u.receive(rooms)
+func (u *User) Run(rooms *sync.Map) {
+	go u.listen(rooms)
 
 	defer u.exit()
 
-	// catch message and send
-	// if user logout, then quit and close connection.
+	// catch and send message
+	// TODO: when user logouts, close connection and channels
 	for {
 		select {
 		case msg := <-u.read:
@@ -43,39 +42,35 @@ func (u *User) Run(rooms map[string]*ChatRoom) {
 	}
 }
 
-// receive listens message from client.
+// listen listens message from client.
 // when message comes, broadcasts it to each users in the chat room.
-func (u *User) receive(rooms map[string]*ChatRoom) error {
+func (u *User) listen(rooms *sync.Map) error {
 	msg := new(Message)
 	for {
 		// parse message and broadcast it
 		if err := websocket.Message.Receive(u.conn, msg); err != nil {
 			return err
 		}
-		u.broadcast(rooms[msg.ChatRoomID], msg)
+		if room, exists := rooms.Load(msg.ChatRoomID); exists {
+			u.broadcast(room.(*ChatRoom), msg)
+		}
 	}
+
+	// TODO: when u quits, this goroutine should stop (context?)
 }
 
 // broadcast broadcasts msg to each users in room.
 func (u *User) broadcast(room *ChatRoom, msg *Message) {
-	for _, user := range room.Users {
-		user.read <- *msg
+	for user := range room.Users {
+		user.read <- msg
 	}
 }
 
 // send sends msg to client.
 // if error occurs or msg was sent less, returns it.
-func (u *User) send(msg Message) error {
-	m, err := json.Marshal(msg)
-	if err != nil {
+func (u *User) send(msg *Message) error {
+	if err := websocket.JSON.Send(u.conn, *msg); err != nil {
 		return err
-	}
-	n, err := u.conn.Write(m)
-	if err != nil {
-		return err
-	}
-	if n < len(m) {
-		return errors.New("less message sent")
 	}
 	return nil
 }
