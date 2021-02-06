@@ -11,8 +11,8 @@ import (
 )
 
 func main() {
-	origin := "http://localhost:3000/"
-	url := "ws://localhost:3000/connect"
+	origin := "http://localhost:1323/"
+	url := "ws://localhost:1323/connect"
 	conn, err := websocket.Dial(url, "", origin)
 
 	if err != nil {

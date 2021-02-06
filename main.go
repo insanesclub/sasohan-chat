@@ -1,18 +1,18 @@
 package main
 
 import (
-	"log"
-	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/insanesclub/sasohan-chat/middleware"
+	"github.com/insanesclub/sasohan-chat/router"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 // upgrader holds websocket connection
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
+	ReadBufferSize:  1 << 12,
+	WriteBufferSize: 1 << 12,
 }
 
 func main() {
@@ -25,13 +25,15 @@ func main() {
 	// memoize chat rooms[chat room ID, chat room]
 	rooms := new(sync.Map)
 
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
 	// register URIs
-	http.Handle("/connect", middleware.Connect(users, rooms, upgrader))
-	http.Handle("/disconnect", middleware.Disconnect(users))
-	http.Handle("/newchat", middleware.NewChat(users, rooms))
+	e.GET("/connect", router.Connect(users, rooms, upgrader))
+	e.POST("/disconnect", router.Disconnect(users))
+	e.POST("/newchat", router.NewChat(users, rooms))
 
 	// start server
-	if err := http.ListenAndServe(":3000", nil); err != nil {
-		log.Fatalln(err)
-	}
+	e.Logger.Fatal(e.Start(":1323"))
 }

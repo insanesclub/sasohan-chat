@@ -1,23 +1,20 @@
-package middleware
+package router
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/insanesclub/sasohan-chat/model"
+	"github.com/labstack/echo/v4"
 )
 
 // Connect creates a new connection.
-func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-
+func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
-			log.Fatalf("upgrader.Upgrade: %v\n", err)
+			return err
 		}
 
 		// get user ID
@@ -27,54 +24,55 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) http.HandlerFu
 
 		// get payload from socket
 		// payload is in-memory buffer
-		// and max size of the buffer is set by Conn.MaxPayloadBytes
-		// default max size is 32MB
+		// and max size of the buffer is set by Conn.SetReadLimit
+		// default max size is 4KB
 		// see https://pkg.go.dev/github.com/gorilla/websocket
 		//
-		// if payload size exceeds limit, ErrFrameTooLarge is returned
+		// if payload size exceeds limit, ErrReadLimit occurs
 		if err = conn.ReadJSON(body); err != nil {
 			log.Fatalf("error while getting user ID: %v\n", err)
 		}
 
 		// create user
 		user := model.NewUser(body.ID, conn)
-		fmt.Printf("created user%s\n", body.ID)
 
 		users.Store(body.ID, user)
 		go user.Run(users, rooms)
+		return nil
 	}
 }
 
 // Disconnect closes a connection.
-func Disconnect(users *sync.Map) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Disconnect(users *sync.Map) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		// get user ID
 		body := new(struct {
 			ID string `json:"id"`
 		})
 
-		if err := json.NewDecoder(r.Body).Decode(body); err != nil {
-			log.Fatalln(err)
+		if err := c.Bind(body); err != nil {
+			return err
 		}
 
 		// alert user to quit
 		if user, exists := users.Load(body.ID); exists {
 			user.(*model.User).Quit()
 		}
+		return nil
 	}
 }
 
-// NewChat creates a new chat room
-func NewChat(users, rooms *sync.Map) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// NewChat creates a new chat room.
+func NewChat(users, rooms *sync.Map) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		// get user ID
 		body := new(struct {
 			ChatRoomID string   `json:"chat_room_id"`
 			Users      []string `json:"users"`
 		})
 
-		if err := json.NewDecoder(r.Body).Decode(body); err != nil {
-			log.Fatalln(err)
+		if err := c.Bind(body); err != nil {
+			return err
 		}
 
 		// create new chat room
@@ -87,8 +85,6 @@ func NewChat(users, rooms *sync.Map) http.HandlerFunc {
 
 		room := model.NewChatRoom(body.ChatRoomID, us...)
 		rooms.Store(body.ChatRoomID, room)
-
-		fmt.Printf("created chat room %s\n", body.ChatRoomID)
-		fmt.Printf("users in chat room %s: %v\n", body.ChatRoomID, room)
+		return nil
 	}
 }

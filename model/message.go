@@ -1,8 +1,9 @@
 package model
 
 import (
-	"fmt"
-	"time"
+	"bytes"
+	"encoding/json"
+	"net/http"
 )
 
 // Message represents a message.
@@ -15,9 +16,22 @@ type Message struct {
 
 // String implements fmt.Stringer.
 func (m Message) String() string {
-	return fmt.Sprintf("from: %s\nto: %s\nwhen: %v\ntext: %s",
-		m.UserID,
-		m.ChatRoomID,
-		time.Unix(m.Time, 0),
-		m.Text)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
+}
+
+// store stores m in Database.
+func (m Message) store(url string) error {
+	buf, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	_, err = http.Post(url, "application/json", bytes.NewBuffer(buf))
+	if err != nil {
+		return err
+	}
+	return nil
 }
