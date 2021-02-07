@@ -1,15 +1,16 @@
 GOCMD = go
 GOBUILD = $(GOCMD) build
 GORUN = $(GOCMD) run
-GOCLEAN = $(GOCMD) clean
+BINARY_FILE = bin/chat
+RM = rm
 
 all: build
 
 build:
-	$(GOBUILD) -gcflags -m -v .
+	$(GOBUILD) -gcflags -m -v -o $(BINARY_FILE) .
 
 run:
 	$(GORUN) -gcflags -m -v .
 
 clean:
-	$(GOCLEAN)
+	$(RM) -f $(BINARY_FILE)

@@ -2,9 +2,8 @@
 ### Build stage ###
 ###################
 
-FROM golang:1.15.7 AS build
+FROM golang:latest AS build
 
-WORKDIR /go/src/github.com/insanesclub
 RUN go get github.com/insanesclub/sasohan-chat
 
 WORKDIR /go/src/github.com/insanesclub/sasohan-chat
