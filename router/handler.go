@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -85,6 +86,56 @@ func NewChat(users, rooms *sync.Map) echo.HandlerFunc {
 
 		room := model.NewChatRoom(body.ChatRoomID, us...)
 		rooms.Store(body.ChatRoomID, room)
+		return nil
+	}
+}
+
+// Leave lets the user leave the chat room.
+func Leave(users, rooms *sync.Map) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// get user ID and chat room ID
+		body := new(struct {
+			UserID     string `json:"user_id"`
+			ChatRoomID string `json:"chat_room_id"`
+		})
+
+		if err := c.Bind(body); err != nil {
+			return err
+		}
+
+		user, exists := users.Load(body.UserID)
+		if !exists {
+			return fmt.Errorf("user %s does not exist", body.UserID)
+		}
+		room, exists := rooms.Load(body.ChatRoomID)
+		if !exists {
+			return fmt.Errorf("chat room %s does not exist", body.ChatRoomID)
+		}
+
+		user.(*model.User).Leave(room.(*model.ChatRoom))
+		return nil
+	}
+}
+
+// DeleteChat deletes the chat room.
+func DeleteChat(rooms *sync.Map) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// get chat room ID
+		body := new(struct {
+			ChatRoomID string `json:"chat_room_id"`
+		})
+
+		if err := c.Bind(body); err != nil {
+			return err
+		}
+
+		room, exists := rooms.Load(body.ChatRoomID)
+		if !exists {
+			return fmt.Errorf("chat room %s does not exist", body.ChatRoomID)
+		}
+
+		room.(*model.ChatRoom).Delete()
+		rooms.Delete(body.ChatRoomID)
 		return nil
 	}
 }

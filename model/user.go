@@ -75,3 +75,9 @@ func (u *User) send(msg *Message) {
 
 // Quit alerts user to quit.
 func (u *User) Quit() { u.quit <- struct{}{} }
+
+// Leave lets u leave room.
+func (u *User) Leave(room *ChatRoom) {
+	delete(room.users, u)
+	delete(u.rooms, room)
+}

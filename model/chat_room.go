@@ -18,3 +18,11 @@ func NewChatRoom(id string, users ...*User) *ChatRoom {
 	}
 	return room
 }
+
+// Delete deletes c.
+func (c *ChatRoom) Delete() {
+	for u := range c.users {
+		delete(u.rooms, c)
+	}
+	c.users = nil
+}
