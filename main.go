@@ -9,12 +9,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-// upgrader holds websocket connection
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1 << 12,
-	WriteBufferSize: 1 << 12,
-}
-
 func main() {
 	// Map is concurrent-safe hash map.
 	// see https://pkg.go.dev/sync#Map
@@ -28,6 +22,12 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
+	// upgrader holds websocket connection
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1 << 12,
+		WriteBufferSize: 1 << 12,
+	}
 
 	// register URIs
 	e.GET("/connect", router.Connect(users, rooms, upgrader))
