@@ -11,7 +11,7 @@ RUN make build
 
 ###
 
-FROM fedora:33
+FROM alpine:3.13.1
 
 COPY --from=build /go/src/github.com/insanesclub/sasohan-chat/bin/chat /bin
 

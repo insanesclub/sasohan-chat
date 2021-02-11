@@ -2,6 +2,8 @@
 
 Chatting API server of [sasohan](https://github.com/insanesclub/sasohan)
 
+## [API specification](https://github.com/insanesclub/sasohan/wiki/chat)
+
 ## Supported functions
 
 - [x] connect
