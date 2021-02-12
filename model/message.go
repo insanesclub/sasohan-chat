@@ -29,9 +29,13 @@ func (m Message) store(url string) error {
 	if err != nil {
 		return err
 	}
-	_, err = http.Post(url, "application/json", bytes.NewBuffer(buf))
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(buf))
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
+
 	return nil
 }
