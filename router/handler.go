@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -24,21 +23,22 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFu
 		})
 
 		// get payload from socket
-		// payload is in-memory buffer
+		// payload is an in-memory buffer
 		// and max size of the buffer is set by Conn.SetReadLimit
 		// default max size is 4KB
 		// see https://pkg.go.dev/github.com/gorilla/websocket
 		//
 		// if payload size exceeds limit, ErrReadLimit occurs
 		if err = conn.ReadJSON(body); err != nil {
-			log.Fatalf("error while getting user ID: %v\n", err)
+			return err
 		}
 
-		// create user
+		// create a user
 		user := model.NewUser(body.ID, conn)
-
 		users.Store(body.ID, user)
+
 		go user.Run(users, rooms)
+
 		return nil
 	}
 }
@@ -76,7 +76,7 @@ func NewChat(users, rooms *sync.Map) echo.HandlerFunc {
 			return err
 		}
 
-		// create new chat room
+		// create a chat room
 		us := make([]*model.User, len(body.Users))
 		for i, uid := range body.Users {
 			if user, exists := users.Load(uid); exists {
@@ -86,6 +86,7 @@ func NewChat(users, rooms *sync.Map) echo.HandlerFunc {
 
 		room := model.NewChatRoom(body.ChatRoomID, us...)
 		rooms.Store(body.ChatRoomID, room)
+
 		return nil
 	}
 }
@@ -107,12 +108,14 @@ func Leave(users, rooms *sync.Map) echo.HandlerFunc {
 		if !exists {
 			return fmt.Errorf("user %s does not exist", body.UserID)
 		}
+
 		room, exists := rooms.Load(body.ChatRoomID)
 		if !exists {
 			return fmt.Errorf("chat room %s does not exist", body.ChatRoomID)
 		}
 
 		user.(*model.User).Leave(room.(*model.ChatRoom))
+
 		return nil
 	}
 }
@@ -136,6 +139,7 @@ func DeleteChat(rooms *sync.Map) echo.HandlerFunc {
 
 		room.(*model.ChatRoom).Delete()
 		rooms.Delete(body.ChatRoomID)
+
 		return nil
 	}
 }

@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	// Map is concurrent-safe hash map.
+	// Map is a concurrent-safe hash map.
 	// see https://pkg.go.dev/sync#Map
-
+	//
 	// memoize users[user ID, user]
 	users := new(sync.Map)
 

@@ -73,7 +73,7 @@ func (u *User) send(msg *Message) {
 	}
 }
 
-// Quit alerts user to quit.
+// Quit alerts u to quit.
 func (u *User) Quit() { u.quit <- struct{}{} }
 
 // Leave lets u leave room.
