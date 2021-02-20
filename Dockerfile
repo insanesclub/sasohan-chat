@@ -2,19 +2,15 @@
 ### Build stage ###
 ###################
 
-FROM golang:latest AS build
-
-RUN go get github.com/insanesclub/sasohan-chat
-
-WORKDIR /go/src/github.com/insanesclub/sasohan-chat
-RUN make build
+FROM    golang:1.15.8 AS builder
+RUN     go get github.com/insanesclub/sasohan-chat
+WORKDIR /go/src/github.com/insanesclub/sasohan-chat/
+RUN     make build
 
 ###
 
-FROM alpine:3.13.1
-
-COPY --from=build /go/src/github.com/insanesclub/sasohan-chat/bin/chat /bin
-
-EXPOSE 1323
-
-CMD ./bin/chat
+FROM    fedora:33
+WORKDIR /bin/
+COPY    --from=builder /go/src/github.com/insanesclub/sasohan-chat/bin/chat .
+EXPOSE  1323
+CMD     ["./chat"]

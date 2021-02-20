@@ -33,8 +33,8 @@ func main() {
 	e.GET("/connect", router.Connect(users, rooms, upgrader))
 	e.POST("/disconnect", router.Disconnect(users))
 	e.POST("/newchat", router.NewChat(users, rooms))
-	e.POST("/leave", router.Leave(users, rooms))
-	e.POST("/deletechat", router.DeleteChat(rooms))
+	e.POST("/leavechat", router.LeaveChat(users, rooms))
+	e.POST("/deletechat", router.DeleteChat(users, rooms))
 
 	// start server
 	e.Logger.Fatal(e.Start(":1323"))
