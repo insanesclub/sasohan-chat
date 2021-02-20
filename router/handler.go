@@ -49,7 +49,9 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFu
 			ErrorMsg string          `json:"error_msg"`
 		})
 
-		dbutil.RestoreJSON(restoredMessages, "http://localhost:3000/restore", bytes.NewBuffer(buf))
+		if err = dbutil.RestoreJSON(restoredMessages, "http://localhost:3000/restore", bytes.NewBuffer(buf)); err != nil {
+			return err
+		}
 
 		if !restoredMessages.Success {
 			return errors.New(restoredMessages.ErrorMsg)
