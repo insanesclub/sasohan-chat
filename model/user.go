@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/insanesclub/sasohan-chat/dataservice/dbutil"
 )
 
 // User represents a user.
@@ -44,7 +45,9 @@ func (u *User) Run(users, rooms *sync.Map) {
 				log.Println(err)
 				u.quit <- struct{}{}
 			} else {
-				// stores msg to "http://localhost:3000/store"
+				if err = dbutil.StoreJSON(*msg, "http://localhost:3000/store"); err != nil {
+					log.Println(err)
+				}
 				if room, exists := rooms.Load(msg.ChatRoomID); exists {
 					u.broadcast(room.(*ChatRoom), msg, users)
 				}
@@ -66,9 +69,17 @@ func (u *User) broadcast(room *ChatRoom, msg *Message, users *sync.Map) {
 
 // send sends msg to client.
 func (u *User) send(msg *Message) {
+	// if message was not sent, store failed message
 	if err := u.conn.WriteJSON(*msg); err != nil {
-		log.Println(err)
-		// stores failed msg to http://localhost:3000/storeFailed
+		body := struct {
+			ID      string  `json:"id"`
+			Message Message `json:"message"`
+		}{ID: u.id, Message: *msg}
+
+		if err = dbutil.StoreJSON(body, "http://localhost:3000/storeFailed"); err != nil {
+			log.Println(err)
+		}
+
 		u.quit <- struct{}{}
 	}
 }
@@ -78,6 +89,7 @@ func (u *User) Quit(users *sync.Map) {
 	users.Delete(u.id)
 	close(u.read)
 	close(u.quit)
+	u.rooms = nil
 	u.conn.Close()
 }
 

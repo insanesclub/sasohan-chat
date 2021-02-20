@@ -1,10 +1,6 @@
 package model
 
-import (
-	"bytes"
-	"encoding/json"
-	"net/http"
-)
+import "encoding/json"
 
 // Message represents a message.
 type Message struct {
@@ -21,21 +17,4 @@ func (m Message) String() string {
 		return err.Error()
 	}
 	return string(b)
-}
-
-// store stores m in Database.
-func (m Message) store(url string) error {
-	buf, err := json.Marshal(m)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(buf))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	return nil
 }

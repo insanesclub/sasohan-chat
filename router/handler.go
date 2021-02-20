@@ -1,10 +1,14 @@
 package router
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/insanesclub/sasohan-chat/dataservice/dbutil"
 	"github.com/insanesclub/sasohan-chat/model"
 	"github.com/labstack/echo/v4"
 )
@@ -33,7 +37,30 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFu
 			return err
 		}
 
-		// restore from http://localhost:3000/restore
+		buf, err := json.Marshal(*body)
+		if err != nil {
+			return err
+		}
+
+		// restore unsent messages
+		restoredMessages := new(struct {
+			Messages []model.Message `json:"messages"`
+			Success  bool            `json:"success"`
+			ErrorMsg string          `json:"error_msg"`
+		})
+
+		dbutil.RestoreJSON(restoredMessages, "http://localhost:3000/restore", bytes.NewBuffer(buf))
+
+		if !restoredMessages.Success {
+			return errors.New(restoredMessages.ErrorMsg)
+		}
+
+		// send restored messages
+		for _, msg := range restoredMessages.Messages {
+			if err = conn.WriteJSON(msg); err != nil {
+				return err
+			}
+		}
 
 		// create a user
 		user := model.NewUser(body.ID, conn)
