@@ -13,7 +13,7 @@ type User struct {
 	conn  *websocket.Conn
 	read  chan *Message
 	quit  chan struct{}
-	rooms map[*ChatRoom]struct{} // rooms participating
+	rooms map[string]struct{} // rooms participating
 }
 
 // NewUser returns a new user.
@@ -23,7 +23,7 @@ func NewUser(id string, conn *websocket.Conn) *User {
 		conn:  conn,
 		read:  make(chan *Message),
 		quit:  make(chan struct{}),
-		rooms: make(map[*ChatRoom]struct{}),
+		rooms: make(map[string]struct{}),
 	}
 }
 
@@ -34,34 +34,33 @@ func (u *User) Run(users, rooms *sync.Map) {
 	// catch and send message
 	for {
 		select {
-		case msg := <-u.read:
-			u.send(msg)
+		case m := <-u.read:
+			u.send(m)
 		case <-u.quit:
-			for room := range u.rooms {
-				delete(room.users, u)
-			}
-			users.Delete(u.id)
-			close(u.read)
-			close(u.quit)
-			u.conn.Close()
+			u.Quit(users)
 			return
 		default:
 			if err := u.conn.ReadJSON(msg); err != nil {
 				log.Println(err)
-				u.Quit()
-			}
-			msg.store("http://localhost:3000/store")
-			if room, exists := rooms.Load(msg.ChatRoomID); exists {
-				u.broadcast(room.(*ChatRoom), msg)
+				u.quit <- struct{}{}
+			} else {
+				// stores msg to "http://localhost:3000/store"
+				if room, exists := rooms.Load(msg.ChatRoomID); exists {
+					u.broadcast(room.(*ChatRoom), msg, users)
+				}
 			}
 		}
 	}
 }
 
 // broadcast broadcasts msg to each users in room.
-func (u *User) broadcast(room *ChatRoom, msg *Message) {
-	for user := range room.users {
-		go func(user *User) { user.read <- msg }(user)
+func (u *User) broadcast(room *ChatRoom, msg *Message, users *sync.Map) {
+	for uid := range room.users {
+		go func(uid string) {
+			if user, exists := users.Load(uid); exists && user.(*User) != nil {
+				user.(*User).read <- msg
+			}
+		}(uid)
 	}
 }
 
@@ -69,15 +68,21 @@ func (u *User) broadcast(room *ChatRoom, msg *Message) {
 func (u *User) send(msg *Message) {
 	if err := u.conn.WriteJSON(*msg); err != nil {
 		log.Println(err)
-		u.Quit()
+		// stores failed msg to http://localhost:3000/storeFailed
+		u.quit <- struct{}{}
 	}
 }
 
 // Quit alerts u to quit.
-func (u *User) Quit() { u.quit <- struct{}{} }
+func (u *User) Quit(users *sync.Map) {
+	users.Delete(u.id)
+	close(u.read)
+	close(u.quit)
+	u.conn.Close()
+}
 
 // Leave lets u leave room.
 func (u *User) Leave(room *ChatRoom) {
-	delete(room.users, u)
-	delete(u.rooms, room)
+	delete(room.users, u.id)
+	delete(u.rooms, room.id)
 }

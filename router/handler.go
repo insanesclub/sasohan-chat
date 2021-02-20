@@ -33,6 +33,8 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFu
 			return err
 		}
 
+		// restore from http://localhost:3000/restore
+
 		// create a user
 		user := model.NewUser(body.ID, conn)
 		users.Store(body.ID, user)
@@ -56,8 +58,8 @@ func Disconnect(users *sync.Map) echo.HandlerFunc {
 		}
 
 		// alert user to quit
-		if user, exists := users.Load(body.ID); exists {
-			user.(*model.User).Quit()
+		if user, exists := users.Load(body.ID); exists && user.(*model.User) != nil {
+			user.(*model.User).Quit(users)
 		}
 		return nil
 	}
@@ -77,22 +79,15 @@ func NewChat(users, rooms *sync.Map) echo.HandlerFunc {
 		}
 
 		// create a chat room
-		us := make([]*model.User, len(body.Users))
-		for i, uid := range body.Users {
-			if user, exists := users.Load(uid); exists {
-				us[i] = user.(*model.User)
-			}
-		}
-
-		room := model.NewChatRoom(body.ChatRoomID, us...)
+		room := model.NewChatRoom(body.ChatRoomID, users, body.Users...)
 		rooms.Store(body.ChatRoomID, room)
 
 		return nil
 	}
 }
 
-// Leave lets the user leave the chat room.
-func Leave(users, rooms *sync.Map) echo.HandlerFunc {
+// LeaveChat lets the user leave the chat room.
+func LeaveChat(users, rooms *sync.Map) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// get user ID and chat room ID
 		body := new(struct {
@@ -105,7 +100,7 @@ func Leave(users, rooms *sync.Map) echo.HandlerFunc {
 		}
 
 		user, exists := users.Load(body.UserID)
-		if !exists {
+		if !exists || user.(*model.User) == nil {
 			return fmt.Errorf("user %s does not exist", body.UserID)
 		}
 
@@ -121,7 +116,7 @@ func Leave(users, rooms *sync.Map) echo.HandlerFunc {
 }
 
 // DeleteChat deletes the chat room.
-func DeleteChat(rooms *sync.Map) echo.HandlerFunc {
+func DeleteChat(users, rooms *sync.Map) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// get chat room ID
 		body := new(struct {
@@ -137,8 +132,7 @@ func DeleteChat(rooms *sync.Map) echo.HandlerFunc {
 			return fmt.Errorf("chat room %s does not exist", body.ChatRoomID)
 		}
 
-		room.(*model.ChatRoom).Delete()
-		rooms.Delete(body.ChatRoomID)
+		room.(*model.ChatRoom).Delete(users, rooms)
 
 		return nil
 	}
