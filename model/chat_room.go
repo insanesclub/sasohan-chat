@@ -16,20 +16,12 @@ func NewChatRoom(id string, users *sync.Map, uids ...string) *ChatRoom {
 	}
 	for _, uid := range uids {
 		room.users[uid] = struct{}{}
-		if user, exists := users.Load(uid); exists && user.(*User) != nil {
-			user.(*User).rooms[id] = struct{}{}
-		}
 	}
 	return room
 }
 
 // Delete deletes c.
 func (c *ChatRoom) Delete(users, rooms *sync.Map) {
-	for uid := range c.users {
-		if user, exists := users.Load(uid); exists && user.(*User) != nil {
-			delete(user.(*User).rooms, c.id)
-		}
-	}
 	c.users = nil
 	rooms.Delete(c.id)
 }
