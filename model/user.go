@@ -10,21 +10,19 @@ import (
 
 // User represents a user.
 type User struct {
-	id    string // user ID
-	conn  *websocket.Conn
-	read  chan *Message
-	quit  chan struct{}
-	rooms map[string]struct{} // rooms participating
+	id   string // user ID
+	conn *websocket.Conn
+	read chan *Message
+	quit chan struct{}
 }
 
 // NewUser returns a new user.
 func NewUser(id string, conn *websocket.Conn) *User {
 	return &User{
-		id:    id,
-		conn:  conn,
-		read:  make(chan *Message),
-		quit:  make(chan struct{}),
-		rooms: make(map[string]struct{}),
+		id:   id,
+		conn: conn,
+		read: make(chan *Message),
+		quit: make(chan struct{}),
 	}
 }
 
@@ -84,17 +82,15 @@ func (u *User) send(msg *Message) {
 	}
 }
 
-// Quit alerts u to quit.
+// Quit lets u quit normally.
 func (u *User) Quit(users *sync.Map) {
 	users.Delete(u.id)
 	close(u.read)
 	close(u.quit)
-	u.rooms = nil
 	u.conn.Close()
 }
 
 // Leave lets u leave room.
 func (u *User) Leave(room *ChatRoom) {
 	delete(room.users, u.id)
-	delete(u.rooms, room.id)
 }

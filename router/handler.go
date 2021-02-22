@@ -43,25 +43,27 @@ func Connect(users, rooms *sync.Map, upgrader websocket.Upgrader) echo.HandlerFu
 		}
 
 		// restore unsent messages
-		restoredMessages := new(struct {
+		restored := new(struct {
 			Messages []model.Message `json:"messages"`
 			Success  bool            `json:"success"`
 			ErrorMsg string          `json:"error_msg"`
 		})
 
-		if err = dbutil.RestoreJSON(restoredMessages, "http://localhost:3000/restore", bytes.NewBuffer(buf)); err != nil {
+		if err = dbutil.RestoreJSON(restored, "http://localhost:3000/restore", bytes.NewBuffer(buf)); err != nil {
 			return err
 		}
 
-		if !restoredMessages.Success {
-			return errors.New(restoredMessages.ErrorMsg)
+		if !restored.Success {
+			return errors.New(restored.ErrorMsg)
 		}
 
 		// send restored messages
-		for _, msg := range restoredMessages.Messages {
-			if err = conn.WriteJSON(msg); err != nil {
-				return err
-			}
+		restoredMessages := struct {
+			Messages []model.Message `json:"messages"`
+		}{Messages: restored.Messages}
+
+		if err = conn.WriteJSON(restoredMessages); err != nil {
+			return err
 		}
 
 		// create a user
